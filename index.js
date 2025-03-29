@@ -15,6 +15,25 @@ let cachedPrice = null;
 let lastFetch = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
+// Rate limiting variables
+const REQUEST_LIMIT = 60; // Max 60 requests per minute
+let requestCount = 0;
+let resetTime = Date.now() + 60 * 1000; // Reset counter every minute
+
+// Middleware for rate limiting
+app.use((req, res, next) => {
+  const now = Date.now();
+  if (now > resetTime) {
+    requestCount = 0;
+    resetTime = now + 60 * 1000; // Reset every minute
+  }
+  requestCount++;
+  if (requestCount > REQUEST_LIMIT) {
+    return res.status(429).json({ error: "Rate limit exceeded, please try again later." });
+  }
+  next();
+});
+
 // Function to fetch SOL price from CoinGecko with Binance as a fallback
 async function fetchSolPrice() {
   try {
