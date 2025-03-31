@@ -34,28 +34,57 @@ app.use((req, res, next) => {
   next();
 });
 
-// Function to fetch SOL price from CoinGecko with Binance as a fallback
+// Function to fetch SOL price from CoinMarketCap, with CoinGecko and Binance as fallbacks
 async function fetchSolPrice() {
+  const now = Date.now();
+  if (cachedPrice && now - lastFetch < CACHE_DURATION) {
+    console.log("Using cached SOL price:", cachedPrice);
+    return;
+  }
   try {
-    console.log("Fetching SOL price from CoinGecko...");
+    console.log("Fetching SOL price from CoinMarketCap...");
     const response = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+      "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=SOL&convert=USD",
+      { headers: { "X-CMC_PRO_API_KEY": "b8312c67-4d9c-4175-8724-1e2c1ff27397" } }
     );
-    cachedPrice = response.data.solana.usd;
-    lastFetch = Date.now();
-    console.log("Fetched SOL price from CoinGecko:", cachedPrice);
+    if (!response.data.data || !response.data.data.SOL || !response.data.data.SOL.quote.USD.price) {
+      throw new Error("Invalid response from CoinMarketCap");
+    }
+    cachedPrice = response.data.data.SOL.quote.USD.price;
+    lastFetch = now;
+    console.log("Fetched SOL price from CoinMarketCap:", cachedPrice);
   } catch (error) {
-    console.error("Error fetching from CoinGecko:", error.message);
+    console.error("Error fetching from CoinMarketCap:", error.message);
     try {
-      console.log("Falling back to Binance...");
-      const binanceResponse = await axios.get(
-        "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT"
+      console.log("Falling back to CoinGecko...");
+      const response = await axios.get(
+        "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
       );
-      cachedPrice = parseFloat(binanceResponse.data.price);
-      lastFetch = Date.now();
-      console.log("Fetched SOL price from Binance:", cachedPrice);
-    } catch (binanceError) {
-      console.error("Error fetching from Binance:", binanceError.message);
+      if (!response.data.solana || !response.data.solana.usd) {
+        throw new Error("Invalid response from CoinGecko");
+      }
+      cachedPrice = response.data.solana.usd;
+      lastFetch = now;
+      console.log("Fetched SOL price from CoinGecko:", cachedPrice);
+    } catch (error) {
+      console.error("Error fetching from CoinGecko:", error.message);
+      try {
+        console.log("Falling back to Binance...");
+        const binanceResponse = await axios.get(
+          "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT"
+        );
+        if (!binanceResponse.data.price) {
+          throw new Error("Invalid response from Binance");
+        }
+        cachedPrice = parseFloat(binanceResponse.data.price);
+        lastFetch = now;
+        console.log("Fetched SOL price from Binance:", cachedPrice);
+      } catch (binanceError) {
+        console.error("Error fetching from Binance:", binanceError.message);
+        if (!cachedPrice) {
+          console.error("No price available; all APIs failed.");
+        }
+      }
     }
   }
 }
