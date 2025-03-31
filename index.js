@@ -50,7 +50,7 @@ async function fetchSolPrice() {
     if (!response.data.data || !response.data.data.SOL || !response.data.data.SOL.quote.USD.price) {
       throw new Error("Invalid response from CoinMarketCap");
     }
-    cachedPrice = response.data.data.SOL.quote.USD.price;
+    cachedPrice = parseFloat(response.data.data.SOL.quote.USD.price.toFixed(2));
     lastFetch = now;
     console.log("Fetched SOL price from CoinMarketCap:", cachedPrice);
   } catch (error) {
@@ -63,7 +63,7 @@ async function fetchSolPrice() {
       if (!response.data.solana || !response.data.solana.usd) {
         throw new Error("Invalid response from CoinGecko");
       }
-      cachedPrice = response.data.solana.usd;
+      cachedPrice = parseFloat(response.data.solana.usd.toFixed(2));
       lastFetch = now;
       console.log("Fetched SOL price from CoinGecko:", cachedPrice);
     } catch (error) {
@@ -76,7 +76,7 @@ async function fetchSolPrice() {
         if (!binanceResponse.data.price) {
           throw new Error("Invalid response from Binance");
         }
-        cachedPrice = parseFloat(binanceResponse.data.price);
+        cachedPrice = parseFloat(parseFloat(binanceResponse.data.price).toFixed(2));
         lastFetch = now;
         console.log("Fetched SOL price from Binance:", cachedPrice);
       } catch (binanceError) {
