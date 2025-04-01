@@ -72,18 +72,18 @@ async function fetchSolPrice() {
     } catch (error) {
       console.error("Error fetching from CoinGecko:", error.message);
       try {
-        console.log("Falling back to Binance...");
-        const binanceResponse = await axios.get(
-          "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT"
+        console.log("Falling back to KuCoin...");
+        const kucoinResponse = await axios.get(
+          "https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=SOL-USDT"
         );
-        if (!binanceResponse.data.price) {
-          throw new Error("Invalid response from Binance");
+        if (!kucoinResponse.data.data || !kucoinResponse.data.data.price) {
+          throw new Error("Invalid response from KuCoin");
         }
-        cachedPrice = parseFloat(parseFloat(binanceResponse.data.price).toFixed(2));
+        cachedPrice = parseFloat(parseFloat(kucoinResponse.data.data.price).toFixed(2));
         lastFetch = now;
-        console.log("Fetched SOL price from Binance:", cachedPrice);
-      } catch (binanceError) {
-        console.error("Error fetching from Binance:", binanceError.message);
+        console.log("Fetched SOL price from KuCoin:", cachedPrice);
+      } catch (kucoinError) {
+        console.error("Error fetching from KuCoin:", kucoinError.message);
         if (!cachedPrice) {
           console.error("No price available; all APIs failed.");
         }
