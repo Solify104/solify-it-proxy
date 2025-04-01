@@ -18,10 +18,9 @@ let cachedExchangeRates = {
   cadToUsdRate: 1,
   jpyToUsdRate: 1,
   cnyToUsdRate: 1,
-  aedToUsdRate: 1,
 };
 let lastFetch = 0;
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 // Rate limiting variables
 const REQUEST_LIMIT = 60; // Max 60 requests per minute
@@ -98,11 +97,11 @@ async function fetchSolPrice() {
     }
   }
 
-  // Fetch exchange rates (GBP, EUR, CAD, JPY, CNY, AED to USD) using Frankfurter API
+  // Fetch exchange rates (GBP, EUR, CAD, JPY, CNY to USD) using Frankfurter API
   try {
     console.log("Fetching exchange rates from Frankfurter...");
     const response = await axios.get(
-      "https://api.frankfurter.app/latest?from=GBP&to=USD,EUR,CAD,JPY,CNY,AED"
+      "https://api.frankfurter.app/latest?from=GBP&to=USD,EUR,CAD,JPY,CNY"
     );
     if (!response.data.rates || !response.data.rates.USD) {
       throw new Error("Invalid response from Frankfurter API");
@@ -115,7 +114,6 @@ async function fetchSolPrice() {
       cadToUsdRate: parseFloat((gbpToUsd / response.data.rates.CAD).toFixed(4)),
       jpyToUsdRate: parseFloat((gbpToUsd / response.data.rates.JPY).toFixed(4)),
       cnyToUsdRate: parseFloat((gbpToUsd / response.data.rates.CNY).toFixed(4)),
-      aedToUsdRate: parseFloat((gbpToUsd / response.data.rates.AED).toFixed(4)),
     };
     console.log("Fetched exchange rates:", cachedExchangeRates);
   } catch (error) {
@@ -126,12 +124,11 @@ async function fetchSolPrice() {
       cadToUsdRate: 1,
       jpyToUsdRate: 1,
       cnyToUsdRate: 1,
-      aedToUsdRate: 1,
     };
   }
 }
 
-// Fetch price on startup and every 10 minutes
+// Fetch price on startup and every 30 minutes
 fetchSolPrice();
 setInterval(fetchSolPrice, CACHE_DURATION);
 
