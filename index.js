@@ -12,6 +12,7 @@ app.use(cors({
 
 // Cache variables
 let cachedPrice = null;
+let cachedGbpToUsdRate = 1; // Default to 1 if fetch fails
 let lastFetch = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
@@ -34,13 +35,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Function to fetch SOL price from CoinMarketCap, with CoinGecko and Binance as fallbacks
+// Function to fetch SOL price and GBP/USD exchange rate
 async function fetchSolPrice() {
   const now = Date.now();
   if (cachedPrice && now - lastFetch < CACHE_DURATION) {
-    console.log("Using cached SOL price:", cachedPrice);
+    console.log("Using cached SOL price:", cachedPrice, "GBP to USD rate:", cachedGbpToUsdRate);
     return;
   }
+
+  // Fetch SOL price in USD
   try {
     console.log("Fetching SOL price from CoinMarketCap...");
     const response = await axios.get(
@@ -87,17 +90,33 @@ async function fetchSolPrice() {
       }
     }
   }
+
+  // Fetch GBP to USD exchange rate
+  try {
+    console.log("Fetching GBP to USD exchange rate...");
+    const response = await axios.get(
+      "https://api.exchangerate-api.com/v4/latest/GBP?access_key=YOUR_EXCHANGERATE_API_KEY"
+    );
+    if (!response.data.rates || !response.data.rates.USD) {
+      throw new Error("Invalid response from ExchangeRate-API");
+    }
+    cachedGbpToUsdRate = parseFloat(response.data.rates.USD.toFixed(4));
+    console.log("Fetched GBP to USD rate:", cachedGbpToUsdRate);
+  } catch (error) {
+    console.error("Error fetching GBP to USD rate:", error.message);
+    cachedGbpToUsdRate = 1; // Fallback to 1 if fetch fails
+  }
 }
 
 // Fetch price on startup and every 10 minutes
 fetchSolPrice();
 setInterval(fetchSolPrice, CACHE_DURATION);
 
-// API endpoint to serve the cached SOL price
+// API endpoint to serve the cached SOL price and exchange rate
 app.get("/sol-price", (req, res) => {
   console.log(`Request received at ${new Date().toISOString()}`);
   if (cachedPrice && Date.now() - lastFetch < CACHE_DURATION) {
-    res.json({ usd: cachedPrice });
+    res.json({ usd: cachedPrice, gbpToUsdRate: cachedGbpToUsdRate });
   } else {
     res.status(503).json({ error: "Price not available, please try again later." });
   }
