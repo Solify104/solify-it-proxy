@@ -12,7 +12,14 @@ app.use(cors({
 
 // Cache variables
 let cachedPrice = null;
-let cachedGbpToUsdRate = 1; // Default to 1 if fetch fails
+let cachedExchangeRates = {
+  gbpToUsdRate: 1,
+  eurToUsdRate: 1,
+  cadToUsdRate: 1,
+  jpyToUsdRate: 1,
+  cnyToUsdRate: 1,
+  aedToUsdRate: 1,
+};
 let lastFetch = 0;
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
@@ -35,11 +42,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Function to fetch SOL price and GBP/USD exchange rate
+// Function to fetch SOL price and exchange rates
 async function fetchSolPrice() {
   const now = Date.now();
   if (cachedPrice && now - lastFetch < CACHE_DURATION) {
-    console.log("Using cached SOL price:", cachedPrice, "GBP to USD rate:", cachedGbpToUsdRate);
+    console.log("Using cached SOL price:", cachedPrice, "Exchange rates:", cachedExchangeRates);
     return;
   }
 
@@ -91,20 +98,36 @@ async function fetchSolPrice() {
     }
   }
 
-  // Fetch GBP to USD exchange rate using Frankfurter API
+  // Fetch exchange rates (GBP, EUR, CAD, JPY, CNY, AED to USD) using Frankfurter API
   try {
-    console.log("Fetching GBP to USD exchange rate from Frankfurter...");
+    console.log("Fetching exchange rates from Frankfurter...");
     const response = await axios.get(
-      "https://api.frankfurter.app/latest?from=GBP&to=USD"
+      "https://api.frankfurter.app/latest?from=GBP&to=USD,EUR,CAD,JPY,CNY,AED"
     );
     if (!response.data.rates || !response.data.rates.USD) {
       throw new Error("Invalid response from Frankfurter API");
     }
-    cachedGbpToUsdRate = parseFloat(response.data.rates.USD.toFixed(4));
-    console.log("Fetched GBP to USD rate:", cachedGbpToUsdRate);
+    // Since Frankfurter returns rates relative to GBP, we need to calculate X/USD rates
+    const gbpToUsd = response.data.rates.USD;
+    cachedExchangeRates = {
+      gbpToUsdRate: parseFloat(gbpToUsd.toFixed(4)),
+      eurToUsdRate: parseFloat((gbpToUsd / response.data.rates.EUR).toFixed(4)),
+      cadToUsdRate: parseFloat((gbpToUsd / response.data.rates.CAD).toFixed(4)),
+      jpyToUsdRate: parseFloat((gbpToUsd / response.data.rates.JPY).toFixed(4)),
+      cnyToUsdRate: parseFloat((gbpToUsd / response.data.rates.CNY).toFixed(4)),
+      aedToUsdRate: parseFloat((gbpToUsd / response.data.rates.AED).toFixed(4)),
+    };
+    console.log("Fetched exchange rates:", cachedExchangeRates);
   } catch (error) {
-    console.error("Error fetching GBP to USD rate:", error.message);
-    cachedGbpToUsdRate = 1; // Fallback to 1 if fetch fails
+    console.error("Error fetching exchange rates:", error.message);
+    cachedExchangeRates = {
+      gbpToUsdRate: 1,
+      eurToUsdRate: 1,
+      cadToUsdRate: 1,
+      jpyToUsdRate: 1,
+      cnyToUsdRate: 1,
+      aedToUsdRate: 1,
+    };
   }
 }
 
@@ -112,11 +135,11 @@ async function fetchSolPrice() {
 fetchSolPrice();
 setInterval(fetchSolPrice, CACHE_DURATION);
 
-// API endpoint to serve the cached SOL price and exchange rate
+// API endpoint to serve the cached SOL price and exchange rates
 app.get("/sol-price", (req, res) => {
   console.log(`Request received at ${new Date().toISOString()}`);
   if (cachedPrice && Date.now() - lastFetch < CACHE_DURATION) {
-    res.json({ usd: cachedPrice, gbpToUsdRate: cachedGbpToUsdRate });
+    res.json({ usd: cachedPrice, exchangeRates: cachedExchangeRates });
   } else {
     res.status(503).json({ error: "Price not available, please try again later." });
   }
