@@ -91,14 +91,14 @@ async function fetchSolPrice() {
     }
   }
 
-  // Fetch GBP to USD exchange rate
+  // Fetch GBP to USD exchange rate using Frankfurter API
   try {
-    console.log("Fetching GBP to USD exchange rate...");
+    console.log("Fetching GBP to USD exchange rate from Frankfurter...");
     const response = await axios.get(
-      "https://api.exchangerate-api.com/v4/latest/GBP?access_key=YOUR_EXCHANGERATE_API_KEY"
+      "https://api.frankfurter.app/latest?from=GBP&to=USD"
     );
     if (!response.data.rates || !response.data.rates.USD) {
-      throw new Error("Invalid response from ExchangeRate-API");
+      throw new Error("Invalid response from Frankfurter API");
     }
     cachedGbpToUsdRate = parseFloat(response.data.rates.USD.toFixed(4));
     console.log("Fetched GBP to USD rate:", cachedGbpToUsdRate);
